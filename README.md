@@ -25,3 +25,46 @@ The system is designed for:
 ---
 
 ## 🏗 System Architecture
+Raspberry Pi Camera
+│
+│ H.264 Stream
+▼
+FFmpeg
+│
+│ RTMP (TCP)
+▼
+AWS Nginx RTMP Server (Port 443)
+│
+▼
+Ground Station Viewer (FFplay / VLC)
+
+
+
+
+---
+
+## ✅ Key Features
+
+- Global video streaming
+- Works over GSM / LTE
+- Firewall-safe (Port 443)
+- Stable TCP transport
+- HD video quality
+- ~5 second latency
+
+---
+
+## 📦 Requirements
+
+### Raspberry Pi
+
+- Raspberry Pi OS / Debian
+- Raspberry Pi Camera
+- `rpicam-vid`
+- FFmpeg
+
+Install dependencies:
+
+```bash
+sudo apt update
+sudo apt install -y ffmpeg
