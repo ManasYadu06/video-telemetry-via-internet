@@ -40,9 +40,9 @@ Traditional RTMP streaming uses **port 1935**, which is commonly blocked by ISPs
 ┌──────────────────────────────────────────────────────┐
 │                  DRONE / REMOTE SITE                 │
 │                                                      │
-│   [RPi Camera] ──CSI──► [Raspberry Pi 4/5]          │
+│   [RPi Camera] ──CSI──► [Raspberry Pi 4/5]           │
 │                               │                      │
-│                    [rpicam-vid + FFmpeg]              │
+│                    [rpicam-vid + FFmpeg]             │
 │                         H.264 Encoder                │
 │                               │                      │
 │                          [EC25 4G LTE]               │
@@ -52,13 +52,13 @@ Traditional RTMP streaming uses **port 1935**, which is commonly blocked by ISPs
                                 │
 ┌───────────────────────────────▼──────────────────────┐
 │                  INTERNET / CELLULAR                 │
-│          GSM / LTE / 4G / 5G / WiFi / ISP           │
+│          GSM / LTE / 4G / 5G / WiFi / ISP            │
 └───────────────────────────────┬──────────────────────┘
                                 │
 ┌───────────────────────────────▼──────────────────────┐
 │               AWS EC2 CLOUD SERVER                   │
 │                                                      │
-│   [Port 443] ──► [Nginx RTMP] ──► [Distribution]    │
+│   [Port 443] ──► [Nginx RTMP] ──► [Distribution]     │
 │                                        │    │        │
 └────────────────────────────────────────┼────┼────────┘
                                          │    │
