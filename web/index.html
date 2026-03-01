@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Live Video Telemetry</title>
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #0d1117;
+      color: #e6edf3;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+      padding: 24px 16px;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 24px;
+    }
+
+    header h1 {
+      font-size: 1.6rem;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+    }
+
+    header p {
+      color: #8b949e;
+      font-size: 0.875rem;
+      margin-top: 4px;
+    }
+
+    .player-wrapper {
+      width: 100%;
+      max-width: 1100px;
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    video {
+      width: 100%;
+      display: block;
+      background: #000;
+      aspect-ratio: 16 / 9;
+    }
+
+    .controls {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 16px;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.8rem;
+      font-weight: 500;
+      padding: 4px 12px;
+      border-radius: 20px;
+      background: #21262d;
+      border: 1px solid #30363d;
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #6e7681;
+      transition: background 0.3s;
+    }
+
+    .status-dot.live   { background: #3fb950; animation: pulse 1.5s infinite; }
+    .status-dot.error  { background: #f85149; }
+    .status-dot.loading{ background: #d29922; animation: pulse 1s infinite; }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0.4; }
+    }
+
+    .stats {
+      font-size: 0.75rem;
+      color: #8b949e;
+    }
+
+    .url-bar {
+      width: 100%;
+      max-width: 1100px;
+      margin-top: 16px;
+      display: flex;
+      gap: 8px;
+    }
+
+    .url-bar input {
+      flex: 1;
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 8px;
+      color: #e6edf3;
+      padding: 8px 12px;
+      font-size: 0.875rem;
+      outline: none;
+    }
+
+    .url-bar input:focus { border-color: #58a6ff; }
+
+    .url-bar button {
+      background: #238636;
+      border: 1px solid #2ea043;
+      color: #fff;
+      border-radius: 8px;
+      padding: 8px 16px;
+      font-size: 0.875rem;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .url-bar button:hover { background: #2ea043; }
+
+    footer {
+      margin-top: 32px;
+      font-size: 0.75rem;
+      color: #6e7681;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>🚁 Live Video Telemetry</h1>
+    <p>Global RTMP/HLS stream viewer — powered by hls.js</p>
+  </header>
+
+  <div class="player-wrapper">
+    <video id="video" controls autoplay muted playsinline></video>
+    <div class="controls">
+      <span class="status-badge">
+        <span class="status-dot loading" id="dot"></span>
+        <span id="statusText">Connecting…</span>
+      </span>
+      <span class="stats" id="stats"></span>
+    </div>
+  </div>
+
+  <!-- Custom stream URL input -->
+  <div class="url-bar">
+    <input type="text" id="streamUrl" placeholder="HLS URL: http://YOUR_EC2_IP/hls/stream.m3u8" />
+    <button onclick="loadStream()">▶ Load</button>
+  </div>
+
+  <footer>Built with hls.js · RTMP over Port 443 · MIT License</footer>
+
+  <script>
+    // ── Configuration ─────────────────────────────────────────────────────────
+    // Replace YOUR_EC2_IP with your actual EC2 public IP
+    const DEFAULT_HLS_URL = 'http://YOUR_EC2_IP/hls/stream.m3u8';
+    // ─────────────────────────────────────────────────────────────────────────
+
+    const video      = document.getElementById('video');
+    const dot        = document.getElementById('dot');
+    const statusText = document.getElementById('statusText');
+    const stats      = document.getElementById('stats');
+
+    let hls = null;
+    let statsInterval = null;
+
+    function setStatus(state, message) {
+      dot.className = 'status-dot ' + state;
+      statusText.textContent = message;
+    }
+
+    function loadStream(url) {
+      url = url || document.getElementById('streamUrl').value.trim() || DEFAULT_HLS_URL;
+
+      // Clean up previous instance
+      if (hls) { hls.destroy(); hls = null; }
+      clearInterval(statsInterval);
+      stats.textContent = '';
+
+      setStatus('loading', 'Connecting…');
+
+      if (Hls.isSupported()) {
+        hls = new Hls({
+          lowLatencyMode: true,
+          liveSyncDuration: 1,
+          liveMaxLatencyDuration: 4,
+          maxBufferLength: 10,
+        });
+
+        hls.loadSource(url);
+        hls.attachMedia(video);
+
+        hls.on(Hls.Events.MANIFEST_PARSED, () => {
+          video.play();
+          setStatus('live', 'LIVE');
+
+          // Show bitrate stats every 3 seconds
+          statsInterval = setInterval(() => {
+            if (hls && hls.bandwidthEstimate) {
+              const kbps = Math.round(hls.bandwidthEstimate / 1000);
+              stats.textContent = `Est. bandwidth: ${kbps} kbps`;
+            }
+          }, 3000);
+        });
+
+        hls.on(Hls.Events.ERROR, (_e, data) => {
+          if (data.fatal) {
+            setStatus('error', 'Stream error — retrying…');
+            setTimeout(() => loadStream(url), 5000);
+          }
+        });
+
+      } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+        // Native HLS (Safari / iOS)
+        video.src = url;
+        video.addEventListener('loadedmetadata', () => {
+          video.play();
+          setStatus('live', 'LIVE');
+        });
+        video.addEventListener('error', () => {
+          setStatus('error', 'Stream error');
+        });
+
+      } else {
+        setStatus('error', 'HLS not supported in this browser');
+      }
+    }
+
+    // Auto-load default stream on page open
+    window.addEventListener('DOMContentLoaded', () => {
+      document.getElementById('streamUrl').value = DEFAULT_HLS_URL;
+      loadStream(DEFAULT_HLS_URL);
+    });
+  </script>
+
+</body>
+</html>
